@@ -28,9 +28,14 @@ function validateEnv() {
   const missing = required.filter(key => !process.env[key]);
   
   if (missing.length > 0) {
-    const isRailway = !!process.env.RAILWAY_ENVIRONMENT;
+    const isRailway = !!(
+      process.env.RAILWAY_PROJECT_ID ||
+      process.env.RAILWAY_SERVICE_NAME ||
+      process.env.RAILWAY_PUBLIC_DOMAIN
+    );
+    const envKeys = Object.keys(process.env).sort().join(', ');
     const hint = isRailway
-      ? `\n\n💡 Railway: переменные нужно добавить во вкладке Variables сервиса, затем нажать "Deploy" (добавленные переменные — это staged changes, требуется деплой для применения).`
+      ? `\n\n💡 Railway: добавьте BOT_TOKEN во вкладке Variables вашего сервиса → New Variable → BOT_TOKEN = ваш_токен\n   После добавления ОБЯЗАТЕЛЬНО нажмите Deploy (переменные — staged changes).\n\n   Доступные переменные: ${envKeys}`
       : `\n\nСоздайте файл .env на основе .env.example`;
     throw new Error(
       `Отсутствуют обязательные переменные окружения: ${missing.join(', ')}${hint}`
