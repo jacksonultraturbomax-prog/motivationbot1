@@ -1,9 +1,10 @@
 /**
  * Конфигурация окружения
- * Загружает переменные окружения из .env файла
- * Использует dotenv для безопасного хранения секретов
+ * Локально: загружает из .env файла
+ * Railway/облако: использует process.env (платформа инжектит переменные)
  */
 import dotenv from 'dotenv';
+import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -11,9 +12,13 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '../..');
+const envPath = join(rootDir, '.env');
 
-// Загружаем переменные окружения
-dotenv.config({ path: join(rootDir, '.env') });
+// Загружаем .env только если файл существует (локальная разработка)
+// На Railway/облаке .env нет — переменные уже в process.env
+if (existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+}
 
 /**
  * Валидация обязательных переменных окружения
@@ -23,9 +28,12 @@ function validateEnv() {
   const missing = required.filter(key => !process.env[key]);
   
   if (missing.length > 0) {
+    const isRailway = !!process.env.RAILWAY_ENVIRONMENT;
+    const hint = isRailway
+      ? `\n\n💡 Railway: переменные нужно добавить во вкладке Variables сервиса, затем нажать "Deploy" (добавленные переменные — это staged changes, требуется деплой для применения).`
+      : `\n\nСоздайте файл .env на основе .env.example`;
     throw new Error(
-      `Отсутствуют обязательные переменные окружения: ${missing.join(', ')}\n` +
-      `Создайте файл .env на основе .env.example`
+      `Отсутствуют обязательные переменные окружения: ${missing.join(', ')}${hint}`
     );
   }
   
