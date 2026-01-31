@@ -1,48 +1,49 @@
 /**
  * Конфигурация окружения
  * Локально: загружает из .env файла
- * Railway/облако: использует process.env (платформа инжектит переменные)
+ * Продакшн (Railway): использует process.env
  */
 import dotenv from 'dotenv';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-// Получаем путь к корню проекта
+// Определяем пути
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '../..');
 const envPath = join(rootDir, '.env');
 
-// Загружаем .env только если файл существует (локальная разработка)
-// На Railway/облаке .env нет — переменные уже в process.env
+// Загружаем .env ТОЛЬКО локально
 if (existsSync(envPath)) {
   dotenv.config({ path: envPath });
 }
 
 /**
  * Валидация обязательных переменных окружения
+ * ⚠️ НЕ вызывается при импорте
  */
-function validateEnv() {
+export function validateEnv() {
   const required = ['BOT_TOKEN'];
   const missing = required.filter(key => !process.env[key]);
-  
+
   if (missing.length > 0) {
-    const isRailway = !!(
-      process.env.RAILWAY_PROJECT_ID ||
-      process.env.RAILWAY_SERVICE_NAME ||
-      process.env.RAILWAY_PUBLIC_DOMAIN
-    );
-    const envKeys = Object.keys(process.env).sort().join(', ');
-    const hint = isRailway
-      ? `\n\n💡 Railway: добавьте BOT_TOKEN во вкладке Variables вашего сервиса → New Variable → BOT_TOKEN = ваш_токен\n   После добавления ОБЯЗАТЕЛЬНО нажмите Deploy (переменные — staged changes).\n\n   Доступные переменные: ${envKeys}`
-      : `\n\nСоздайте файл .env на основе .env.example`;
-    throw new Error(
-      `Отсутствуют обязательные переменные окружения: ${missing.join(', ')}${hint}`
-    );
+    const hint = `
+❌ Отсутствуют обязательные переменные окружения: ${missing.join(', ')}
+
+👉 Локально:
+   - создайте файл .env
+   - добавьте BOT_TOKEN=ваш_токен
+
+👉 Railway:
+   - Service → Variables
+   - New Variable → BOT_TOKEN
+   - После этого ОБЯЗАТЕЛЬНО нажмите Deploy
+`;
+
+    throw new Error(hint);
   }
-  
-  // Валидация MODE
+
   const mode = process.env.MODE || 'dev';
   if (!['dev', 'prod'].includes(mode)) {
     throw new Error(
@@ -51,11 +52,9 @@ function validateEnv() {
   }
 }
 
-// Валидируем при загрузке модуля
-validateEnv();
-
 /**
  * Экспорт конфигурации
+ * ⚠️ Просто читаем process.env, без валидации
  */
 export const config = {
   botToken: process.env.BOT_TOKEN,
