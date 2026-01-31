@@ -1,0 +1,26 @@
+{
+  "name": "motivation-bot",
+  "version": "2.0.0",
+  "description": "Telegram motivation bot migrated from Python to Node.js",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "motivation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "grammy": "^1.25.0",
+    "better-sqlite3": "^11.6.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
