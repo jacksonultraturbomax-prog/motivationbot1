@@ -1,44 +1,44 @@
 /**
  * Точка входа приложения
  * Только bootstrap логика - инициализация и запуск бота
- * Вся бизнес-логика вынесена в отдельные модули
  */
 import { initializeBot, shutdownBot } from './bot.js';
-import { config } from './config/env.js';
+import { config, validateEnv } from './config/env.js';
 
 /**
  * Главная функция запуска приложения
  */
 async function main() {
   try {
-    // Логирование режима работы
+    // ✅ ВАЖНО: валидируем env ЯВНО, после старта Node
+    validateEnv();
+
     const modeLabel = config.mode === 'prod' ? 'PRODUCTION' : 'DEVELOPMENT';
+
     console.log('='.repeat(50));
     console.log(`🚀 Запуск мотивационного бота [${modeLabel} MODE]`);
     console.log(`📡 Режим: Long Polling (без webhook)`);
-    console.log(`🌍 Порт: ${config.port} (для Railway совместимости)`);
+    console.log(`🌍 Порт: ${config.port} (Railway friendly)`);
     console.log('='.repeat(50));
-    
-    // Инициализация и запуск бота
+
     const bot = await initializeBot();
-    
-    // Запуск бота с long polling
-    // Grammy использует long polling по умолчанию через bot.start()
-    // Это идеально для Railway - процесс будет работать непрерывно
+
     bot.start();
-    
+
     console.log('✅ Бот успешно запущен и готов к работе!');
-    console.log('📥 Long polling активен - бот получает обновления');
-    
+    console.log('📥 Long polling активен');
+
     if (config.mode === 'dev') {
-      console.log('💡 Режим разработки: используйте Ctrl+C для остановки');
+      console.log('💡 Dev режим: Ctrl+C для остановки');
     } else {
-      console.log('🏭 Production режим: бот работает на Railway');
+      console.log('🏭 Production режим (Railway)');
     }
-    
-    // Обработка сигналов для graceful shutdown
+
+    /**
+     * Graceful shutdown
+     */
     const shutdown = async (signal) => {
-      console.log(`\n📴 Получен сигнал ${signal}, выполняется graceful shutdown...`);
+      console.log(`\n📴 Получен сигнал ${signal}, завершаем работу...`);
       try {
         await shutdownBot(bot);
         process.exit(0);
@@ -47,37 +47,29 @@ async function main() {
         process.exit(1);
       }
     };
-    
-    process.once('SIGINT', () => {
-      shutdown('SIGINT').catch(err => {
-        console.error('❌ Ошибка при обработке SIGINT:', err);
+
+    process.once('SIGINT', () => shutdown('SIGINT'));
+    process.once('SIGTERM', () => shutdown('SIGTERM'));
+
+    process.on('unhandledRejection', (reason) => {
+      console.error('❌ Unhandled Promise Rejection:', reason);
+    });
+
+    process.on('uncaughtException', async (error) => {
+      console.error('❌ Uncaught Exception:', error);
+      try {
+        await shutdownBot(bot);
+      } finally {
         process.exit(1);
-      });
+      }
     });
-    
-    process.once('SIGTERM', () => {
-      shutdown('SIGTERM').catch(err => {
-        console.error('❌ Ошибка при обработке SIGTERM:', err);
-        process.exit(1);
-      });
-    });
-    
-    // Обработка необработанных ошибок
-    process.on('unhandledRejection', (reason, promise) => {
-      console.error('❌ Необработанное отклонение промиса:', reason);
-    });
-    
-    process.on('uncaughtException', (error) => {
-      console.error('❌ Необработанное исключение:', error);
-      shutdownBot(bot).then(() => process.exit(1));
-    });
-    
+
   } catch (error) {
-    console.error('❌ Критическая ошибка при запуске бота:', error);
-    console.error('Стек ошибки:', error.stack);
+    console.error('❌ Критическая ошибка при запуске бота:');
+    console.error(error.message);
     process.exit(1);
   }
 }
 
-// Запуск приложения
+// 🚀 Запуск
 main();
